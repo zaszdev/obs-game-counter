@@ -9,6 +9,29 @@ function script_description()
             <p>Supports score up/down hotkeys for up to four players.</p>]]
 end
 
+-- Shamelessly yoinked from https://github.com/obsproject/obs-studio/wiki/scripting-tutorial-source-shake
+function populate_list_property_with_source_names(list_property)
+    local sources = obs.obs_enum_sources()
+    obs.obs_property_list_clear(list_property)
+    obs.obs_property_list_add_string(list_property, "", "")
+    for _, source in pairs(sources) do
+        local name = obs.obs_source_get_name(source)
+        obs.obs_property_list_add_string(list_property, name, name)
+    end
+    obs.source_list_release(sources)
+end
+
+-- Called to define user properties of the script (under Tools -> Scripts)
+function script_properties()
+    local props = obs.obs_properties_create()
+    for i, _ in ipairs(players) do
+        local list_property = obs.obs_properties_add_list(props, "source" .. i .. "_name", "Player " .. i .. " Source",
+            obs.OBS_COMBO_TYPE_LIST, obs.OBS_COMBO_FORMAT_STRING)
+        populate_list_property_with_source_names(list_property)
+    end
+    return props
+end
+
 -- Update a text source with a given value
 function update_source_with_value(source_name, value)
     local source = obs.obs_get_source_by_name(source_name)
@@ -64,6 +87,13 @@ function script_load(settings)
         obs.obs_data_array_release(down)
 
         table.insert(players, player)
+    end
+end
+
+-- Called after script load and settings change
+function script_update(settings)
+    for i, player in ipairs(players) do
+        player.source_name = obs.obs_data_get_string(settings, "source" .. i .. "_name")
     end
 end
 
