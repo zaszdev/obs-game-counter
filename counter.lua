@@ -1,31 +1,8 @@
 obs = obslua
 
-players = {
-    {
-        name = "Player 1",
-        score = 0,
-        up_hotkey_id = nil,
-        down_hotkey_id = nil,
-    },
-    {
-        name = "Player 2",
-        score = 0,
-        up_hotkey_id = nil,
-        down_hotkey_id = nil,
-    },
-    {
-        name = "Player 3",
-        score = 0,
-        up_hotkey_id = nil,
-        down_hotkey_id = nil,
-    },
-    {
-        name = "Player 4",
-        score = 0,
-        up_hotkey_id = nil,
-        down_hotkey_id = nil,
-    },
-}
+PLAYER_COUNT = 4
+
+players = {}
 
 function script_description()
     return [[<center><h2>Game Changer Counter :3</h2></center>
@@ -49,52 +26,56 @@ function update_source_with_value(source_name, value)
 end
 
 -- Generic hotkey handler
-function make_hotkey_callback(player_index, value)
+function make_hotkey_callback(index, value)
     return function(pressed)
         if pressed then
-            local p = players[player_index]
-
-            p.score = p.score + (value)
-
-            update_source_with_value(p.name, p.score)
+            local player = players[index]
+            player.score = player.score + (value)
+            update_source_with_value(player.source_name, player.score)
         end
     end
 end
 
--- Script load: register hotkeys
+-- Called at script load
 function script_load(settings)
-    for idx, player in ipairs(players) do
+    for i = 1, PLAYER_COUNT do
+        local player = {}
+        player.score = 0
+        player.source_name = obs.obs_data_get_string(settings, "source" .. i .. "_name")
+
         -- Register UP hotkey
         player.up_hotkey_id = obs.obs_hotkey_register_frontend(
             script_path(),
-            player.name .. " Score Up",
-            make_hotkey_callback(idx, 1)
+            player.source_name .. " Score Up",
+            make_hotkey_callback(i, 1)
         )
-        local up = obs.obs_data_get_array(settings, "hotkey_player_up_" .. idx)
+        local up = obs.obs_data_get_array(settings, "hotkey_player_up_" .. i)
         obs.obs_hotkey_load(player.up_hotkey_id, up)
         obs.obs_data_array_release(up)
 
         -- Register DOWN hotkey
         player.down_hotkey_id = obs.obs_hotkey_register_frontend(
             script_path(),
-            player.name .. " Score Down",
-            make_hotkey_callback(idx, -1)
+            player.source_name .. " Score Down",
+            make_hotkey_callback(i, -1)
         )
-        local down = obs.obs_data_get_array(settings, "hotkey_player_down_" .. idx)
+        local down = obs.obs_data_get_array(settings, "hotkey_player_down_" .. i)
         obs.obs_hotkey_load(player.down_hotkey_id, down)
         obs.obs_data_array_release(down)
+
+        table.insert(players, player)
     end
 end
 
--- Script save: store hotkeys
+-- Called before settings are saved
 function script_save(settings)
-    for idx, player in ipairs(players) do
+    for i, player in ipairs(players) do
         local up = obs.obs_hotkey_save(player.up_hotkey_id)
-        obs.obs_data_set_array(settings, "hotkey_player_up_" .. idx, up)
+        obs.obs_data_set_array(settings, "hotkey_player_up_" .. i, up)
         obs.obs_data_array_release(up)
 
         local down = obs.obs_hotkey_save(player.down_hotkey_id)
-        obs.obs_data_set_array(settings, "hotkey_player_down_" .. idx, down)
+        obs.obs_data_set_array(settings, "hotkey_player_down_" .. i, down)
         obs.obs_data_array_release(down)
     end
 end
